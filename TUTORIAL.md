@@ -1,3 +1,10 @@
+**This document is no longer maintained.**
+Current Pipeline documentation lives on the [jenkins.io documentation zone](https://jenkins.io/doc/book/pipeline/).
+Content will be removed from this document as it is verified that the new site has equivalent information,
+or that it is outdated or unnecessary.
+
+------------
+
 This document is intended for new users of the pipeline feature to learn how to write and understand pipelines.
 
 # Why Pipeline?
@@ -14,13 +21,13 @@ Pipeline (formerly known as Workflow) was built with the community’s requireme
 
 Before you begin, ensure you have the following installed or running:
 
-+ You must be running Jenkins 1.580.1 or later (1.609.1+ for latest features).
++ You must be running Jenkins 1.580.1 or later (1.642.3+ for latest features).
 
 + Ensure Pipeline is installed: navigate to **Plugin Manager**, install **Pipeline** and restart Jenkins.
 
 **Note**: If you are running CloudBees Jenkins Enterprise 14.11 or later, you already have Pipeline (plus additional associated features).
 
-If you want to play with Pipeline without installing Jenkins separately (or accessing your production system), try running the [Docker demo](demo/README.md).
+If you want to play with Pipeline without installing Jenkins separately (or accessing your production system), try running the [Docker demo](https://github.com/jenkinsci/workflow-aggregator-plugin/blob/master/demo/README.md).
 
 # Creating a Pipeline
 
@@ -85,7 +92,8 @@ The following sections guide you through creating a simple Pipeline.
 To set up for creating a Pipeline, ensure you have the following:
 
 1. First, you need a Maven installation available to do builds with.
-Go to _Jenkins » Manage Jenkins » Configure System_, click **Add Maven**, give it the name **M3** and allow it to install automatically.
+Go to _Jenkins » Manage Jenkins » Configure System_, click **Add Maven**, give it the name **M3** and allow it to install automatically. For Jenkins 2.x and later, this option is under  _Jenkins » Manage Jenkins » Global Tool Configuration_ instead. 
+
 
 2. Only if you do not have Git installed on your Jenkins server: click **Delete Git** on the default Git installation and _Add Git » JGit_ to replace it.
 
@@ -115,7 +123,7 @@ Finished: FAILURE
 
 ### Modifying for Windows Variations
 
-This documentation assumes Jenkins is running on Linux or another Unix-like operating system. If your Jenkins server (or, later, slave) is running on Windows, try using `bat` in place of `sh`, and use backslashes as the file separator where needed (backslashes do generally need to be escaped inside strings).
+This documentation assumes Jenkins is running on Linux or another Unix-like operating system. If your Jenkins server (or, later, agent node) is running on Windows, try using `bat` in place of `sh`, and use backslashes as the file separator where needed (backslashes do generally need to be escaped inside strings).
 
 **Example**: rather than:
 
@@ -132,7 +140,7 @@ bat "${mvnHome}\\bin\\mvn -B verify"
 ## Understanding Syntax
 
 A `node` is a step that schedules a task to run by adding it to the Jenkins build queue.
-* As soon as an executor slot is available on a **node** (the Jenkins master, or a slave), the task is run on that node.
+* As soon as an executor slot is available on a **node** (the Jenkins master, or agent), the task is run on that node.
 * A `node` also allocates a **workspace** (file directory) on that node for the duration of the task (more on this later).
 
 Groovy functions  accept **closures** (blocks of code) and some steps expect a block.
@@ -236,7 +244,7 @@ node {
 * You can override certain environment variables and the overrides are seen by subsequent `sh` steps (or anything else that pays attention to environment variables).
 * You can run `mvn` without a fully-qualified path.
 
-Setting a variable such as `PATH` in this way is only safe if you are using a single slave for this build.
+Setting a variable such as `PATH` in this way is only safe if you are using a single agent for this build.
 As an alternative, you can use the `withEnv` step to set a variable within a scope:
 
 ```groovy
@@ -256,7 +264,18 @@ See  Help in the **Snippet Generator** for the `withEnv` step for more details o
 
 ## Build Parameters
 
-If you have configured your pipeline to accept parameters when it is built — **Build with Parameters** — they are accessible as Groovy variables of the same name.
+If you have configured your pipeline to accept parameters when it is built — **Build with Parameters** — they are accessible as Groovy variables inside `params`. They are also accessible as environment variables.
+
+**Example**: Using `isFoo` parameter defined as a boolean parameter (checkbox in the UI):
+
+```groovy
+node {
+  sh "isFoo is ${params.isFoo}"
+  sh 'isFoo is ' + params.isFoo
+  if (params.isFoo) {
+    // do something
+  }
+```
 
 # Recording Test Results and Artifacts
 
@@ -307,6 +326,17 @@ It may be a fully-qualified class name (`hudson.tasks.ArtifactArchiver`), but th
 
 In some cases, part of a step configuration will force an object to be of a fixed class. Thus, `$class` can be omitted entirely.
 
+Newer versions of Pipeline will often allow shorter forms, such as
+
+```groovy
+archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+```
+
+_Pipeline: Groovy_ 2.10 or later is needed for such syntax.
+Depending on the particular call, you may also need _Pipeline: Basic Steps_ 2.1 or later,
+Jenkins core 2.2 or later, and/or updated versions of various Pipeline-compatible plugins.
+See the _Pipeline Syntax: Reference_ page inside Jenkins for a detailed guide on step configuration syntax.
+
 **Example**: rather than using the simple `git` step, you can use the more general `checkout` step and specify any complex configuration supported by the Git plugin:
 
 ```groovy
@@ -316,9 +346,9 @@ checkout scm: [$class: 'GitSCM', branches: [[name: '*/master']], userRemoteConfi
 Here, `[[name: '*/master']]`is an array with one map element, `[name: '*/master']`, which is an object of type `hudson.plugins.git.BranchSpec`, but we can omit `$class: 'BranchSpec'` since `branches` can only hold this kind of object.
 Similarly, the elements of `userRemoteConfigs` are declared to be of type `UserRemoteConfig`, so this need not be mentioned.
 
-# Using Slaves
+# Using Agents
 
-Thus far, pipeline has run only on the Jenkins master - assuming you had no slaves configured.
+Thus far, pipeline has run only on the "master" agent on your Jenkins server - assuming you had no other agents configured.
 You can even force it to run on the master by telling the `node` step the following:
 
 ```groovy
@@ -329,18 +359,18 @@ node('master') {
 
 Here, you pass a value for the optional `label` parameter of the step, as well as a body block.
 
-To create a simple slave:
+To create a simple agent:
 
-1.  Select _Manage Jenkins » Manage Nodes » New Node_ and create a _Dumb Slave_.
+1.  Select _Manage Jenkins » Manage Nodes » New Node_ and create a _Permanent Agent_.
 Leave _# of executors_ as 1.
 
-2. Pick a **Remote root directory** such as `/tmp/slave`.
+2. Pick a **Remote root directory** such as `/tmp/agent`.
 
-3. Enter `remote` in the **Labels** field and set the _Launch method_ to _Launch slave agents via Java Web Start_.
+3. Enter `remote` in the **Labels** field and set the _Launch method_ to _Launch agents via Java Web Start_.
 
-4. **Save**, then click on the new slave and **Launch**.
+4. **Save**, then click on the new agent and **Launch**.
 
-5. Now, go back to your Pipeline definition and request this slave’s label:
+5. Now, go back to your Pipeline definition and request this agent's label:
 
 ```groovy
 node('remote') {
@@ -348,7 +378,7 @@ node('remote') {
 }
 ```
 
-The parameter may be a slave name, or a single label, or even a label expression such as:
+The parameter may be a node name, or a single label, or even a label expression such as:
 
 ```groovy
 node('unix && 64bit') {
@@ -359,10 +389,10 @@ node('unix && 64bit') {
 When you **Build Now**, you see:
 
 ```
-Running on <yourslavename> in /<slaveroot>/workspace/<jobname>
+Running on <youragentname> in /<agentroot>/workspace/<jobname>
 ```
 
-and the `M3` Maven installation being unpacked to this slave root.
+and the `M3` Maven installation being unpacked to this agent root.
 
 ## Pausing: Flyweight vs. Heavyweight Executors
 
@@ -391,7 +421,7 @@ If you click **Proceed**, the build will proceed as before.
 First, go to the Jenkins main page and look at the **Build Executor Status** widget.
 
 * You will see an unnumbered entry under **master** named  **jobname #10**; executors #1 and #2 on the master are idle.
-* You will also see an entry under your slave, in a numbered row (probably #1) called **Building part of jobname #10**.
+* You will also see an entry under your agent, in a numbered row (probably #1) called **Building part of jobname #10**.
 
 Why are there two executors consumed by one Pipeline build?
 
@@ -400,10 +430,10 @@ Why are there two executors consumed by one Pipeline build?
 * Flyweight executors are always available.
 
 When you run a `node` step:
-* A regular heavyweight executor is allocated on a node (usually a slave) matching the label expression, as soon as one is available. This executor represents the real work being done on the node.
+* A regular heavyweight executor is allocated on a node (usually an agent) matching the label expression, as soon as one is available. This executor represents the real work being done on the node.
 
 * If you start a second build of the Pipeline while the first is still paused with the one available executor, you will see both Pipeline builds running on master.
-But only the first will have grabbed the one available executor on the slave; the other **part of jobname #11** will be shown in **Build Queue (1)**.
+But only the first will have grabbed the one available executor on the agent; the other **part of jobname #11** will be shown in **Build Queue (1)**.
 (shortly after, the console log for the second build will note that it is still waiting for an available executor).
 
 To finish up, click the ▾ beside either executor entry for any running Pipeline and select **Paused for Input**, then click **Proceed**
@@ -415,12 +445,12 @@ In addition to waiting to allocate an executor on a node, the `node` step also a
 Workspaces are locked for the duration of the step: only one build at a time can use a given workspace.
 If multiple builds need a workspace on the same node, additional workspaces are allocated.
 
-**Configure** your slave, set **# of executors** to 2 and **Save**.
+**Configure** your agent, set **# of executors** to 2 and **Save**.
 Now start your build twice in a row.
 The log for the second build will show
 
 ```
-Running on <yourslavename> in /<slaveroot>/workspace/<jobname>@2
+Running on <youragentname> in /<agentroot>/workspace/<jobname>@2
 ```
 
 The `@2` shows that the build used a separate workspace from the first one, with which it ran concurrently.
@@ -432,7 +462,7 @@ Cloning the remote Git repository
 
 since this new workspace required a new copy of the project sources.
 
-You can also use the `ws` step to explicitly ask for another workspace on the current slave, _without_ grabbing a new executor slot.
+You can also use the `ws` step to explicitly ask for another workspace on the current agent, _without_ grabbing a new executor slot.
 Inside its body all commands run in the second workspace.
 The `dir` step can be used to run a block with a different working directory (typically a subdirectory of the workspace) without allocating a new workspace.
 
@@ -553,66 +583,57 @@ def version(text) {
 
 Here the logic inside the `version` function is run by the normal Groovy runtime, so any local variables are permitted.
 
+The [Pipeline: Groovy plugin page](https://github.com/jenkinsci/workflow-cps-plugin/blob/master/README.md) has deeper background on `@NonCPS`.
+
 ## Creating Multiple Threads
 Pipelines can use a `parallel` step to perform multiple actions at once.
 This special step takes a map as its argument; keys are “branch names” (labels for your own benefit), and values are blocks to run.
 
-To see how this can be useful, install a new plugin: **Parallel Test Executor** (version 1.6 or later).
+To see how this can be useful, install a new plugin: **Parallel Test Executor** (version 1.9 or later).
 This plugin includes a Pipeline step that lets you split apart slow test runs.
-Also make sure the JUnit plugin is at least version 1.3+.
+Also make sure the JUnit plugin is at least version 1.18+.
 
 Now create a new pipeline with the following script:
 
 ```groovy
 node('remote') {
-  git url: 'https://github.com/jenkinsci/parallel-test-executor-plugin-sample.git'
-  archive 'pom.xml, src/'
+  git 'https://github.com/jenkinsci/parallel-test-executor-plugin-sample.git'
+  stash name: 'sources', includes: 'pom.xml,src/'
 }
-def splits = splitTests([$class: 'CountDrivenParallelism', size: 2])
+def splits = splitTests count(2)
 def branches = [:]
 for (int i = 0; i < splits.size(); i++) {
-  def exclusions = splits.get(i);
+  def index = i // fresh variable per iteration; i will be mutated
   branches["split${i}"] = {
     node('remote') {
-      sh 'rm -rf *'
-      unarchive mapping: ['pom.xml' : '.', 'src/' : '.']
+      deleteDir()
+      unstash 'sources'
+      def exclusions = splits.get(index);
       writeFile file: 'exclusions.txt', text: exclusions.join("\n")
       sh "${tool 'M3'}/bin/mvn -B -Dmaven.test.failure.ignore test"
-      step([$class: 'JUnitResultArchiver', testResults: 'target/surefire-reports/*.xml'])
+      junit 'target/surefire-reports/*.xml'
     }
   }
 }
 parallel branches
 ```
 
-**Note**: to enable the Groovy sandbox on this script, be sure to update the Script Security plugin to version 1.11 or later.
-Even so, you may see a `RejectedAccessException` error at this point.
-If so, a Jenkins administrator will need to go to **Manage Jenkins » In-process Script Approval** and **Approve** `staticMethod org.codehaus.groovy.runtime.ScriptBytecodeAdapter compareLessThan java.lang.Object java.lang.Object`.
-Then try running your script again and it should work.
-A later version of the plugin may remove the need for this workaround.
-
 When you run this Pipeline for the first time, it will check out a project and run all of its tests in sequence.
 The second and subsequent times you run it, the `splitTests` task will partition your tests into two sets of roughly equal runtime.
 The rest of the Pipeline then runs these in parallel — so if you look at **trend** (in the **Build History** widget) you will see the second and subsequent builds taking roughly half the time of the first.
-If you only have the one slave configured with its two executors, this won't save time, but you may have multiple slaves on different hardware matching the same label expression.
+If you only have the one agent configured with its two executors, this won't save as much time, but you may have multiple agents on different hardware matching the same label expression.
 
 This script is more complex than the previous ones so it bears some examination.
-You start by grabbing a slave, checking out sources, and making a copy of them using the `archive` step:
+You start by grabbing an agent, checking out sources, and making a copy of them using the `stash` step:
 
 ```groovy
-archive 'pom.xml, src/'
+stash name: 'sources', includes: 'pom.xml,src/'
 ```
 
-is shorthand for the more general:
-
-```groovy
-step([$class: 'ArtifactArchiver', artifacts: 'pom.xml, src/'])
-```
-
-Later,  `unarchive` these same files back into **other** workspaces.
-You could have just run `git` anew in each slave’s workspace, but this would result in duplicated changelog entries, as well as contacting the Git server twice.
+Later, you `unstash` these same files back into **other** workspaces.
+You could have just run `git` anew in each agent's workspace, but this would result in duplicated changelog entries, as well as contacting the Git server twice.
 * A Pipeline build is permitted to run as many SCM checkouts as it needs to, which is useful for projects working with multiple repositories, but not what we want here.
-* More importantly, if anyone pushes a new Git commit at  the wrong time, you might be testing different sources in some branches - which is prevented when you do the checkout just once and distribute sources to slaves yourself.
+* More importantly, if anyone pushes a new Git commit at  the wrong time, you might be testing different sources in some branches - which is prevented when you do the checkout just once and distribute sources to agents yourself.
 
 The command `splitTests` returns a list of lists of strings.
 From each (list) entry, you construct one branch to run; the label (map key) is akin to a thread name, and will appear in the build log.
@@ -620,7 +641,7 @@ The Maven project is set up to expect a file `exclusions.txt` at its root, and i
 When you run the `parallel` step, each branch is started at the same time, and the overall step completes when all the branches finish: “fork & join”.
 
 There are several new ideas at work here:
-* A single Pipeline build allocates several executors, potentially on different slaves, at the same time.
+* A single Pipeline build allocates several executors, potentially on different agents, at the same time.
 You can see these starting and finishing in the Jenkins executor widget on the main screen.
 
 * Each call to `node` gets its own workspace.
@@ -632,7 +653,7 @@ Do not use `env` in this case:
 env.PATH = "${mvnHome}/bin:${env.PATH}"
 ```
 
-because environment variable overrides are  limited to being global to a pipeline run, not local to the current thread (and thus slave).
+because environment variable overrides are  limited to being global to a pipeline run, not local to the current thread (and thus agent).
 You could, however, use the `withEnv` step as noted above.
 
 You may also have noticed that you are running `JUnitResultArchiver` several times, something that is not possible in a freestyle project.
@@ -645,19 +666,10 @@ You can click on individual steps and get more details, such as the log output f
 
 # Creating Stages
 
-By default, Pipeline builds can run concurrently.
-The `stage` command lets you mark certain sections of a build as being constrained by limited concurrency (or, later, unconstrained).
-Newer builds are always given priority when entering such a throttled stage; older builds will simply exit early if they are preëmpted.
+A `stage` block lets you label certain sections of a build for use in visualizations.
+Other steps like `milestone` and `lock` can be used to control concurrency of multiple builds.
 
-A concurrency of one is useful to let you lock a singleton resource, such as deployment to a single target server.
-Only one build will deploy at a given time: the newest which passed all previous stages.
-
-A finite concurrency ≥1 can also be used to prevent slow build stages such as integration tests from overloading the system.
-Every SCM push can still trigger a separate build of a quicker earlier stage as compilation and unit tests.
-Yet each build runs linearly and can even retain a single workspace, avoiding the need to identify and copy artifacts between builds.
-(Even if you dispose of a workspace from an earlier stage, you can retain information about it using simple local variables.)
-
-Consult the [Docker demo](demo/README.md) for an example of a Pipeline using multiple `stage`s.
+Consult the [Docker demo](https://github.com/jenkinsci/workflow-aggregator-plugin/blob/master/demo/README.md) for an example of a Pipeline using multiple `stage`s.
 
 # Loading Script Text from Version Control
 
@@ -670,6 +682,10 @@ The easiest way to do this is to select **Pipeline script from SCM** when defini
 In that case you do not enter any Groovy code in the Jenkins UI; you just indicate where in source code you want to retrieve the program.
 If you update this repository, a new build will be triggered, so long as your job is configured with an SCM polling trigger.
 
+## Using Libraries
+
+The [Shared Groovy Libraries plugin](https://github.com/jenkinsci/workflow-cps-global-lib-plugin/blob/master/README.md), included in the Pipeline suite, allows multiple jobs to shared common utility code.
+
 ## Triggering Manual Loading
 
 For some cases, you may prefer to explicitly load Groovy script text from some source.
@@ -677,8 +693,8 @@ The standard Groovy `evaluate` function can be used, but most likely you will wa
 For this purpose, you can use the `load` step, which takes a filename in the workspace and runs it as Groovy source text.
 
 The loaded file can contain statements at top level, which are run immediately.
-That is fine if you only want to use a single executor and workspace, and do not mind hard-coding the slave label in the Jenkins job.
-For more complex cases, though, you want to leave the external script in full control of slave allocation.
+That is fine if you only want to use a single executor and workspace, and do not mind hard-coding the agent label in the Jenkins job.
+For more complex cases, though, you want to leave the external script in full control of agent allocation.
 In that case the main script defined in the job can just load and run a closure (block of code to be run later):
 
 ```groovy
@@ -696,7 +712,7 @@ Here `pipeline.groovy` could look like:
 
 ```groovy
 { ->
-  node('special-slave') {
+  node('special-agent') {
     hello 'world'
   }
 }
@@ -708,11 +724,11 @@ def hello(whom) {
 **Note**: While it can contain helper functions, the only code at top level is a Groovy `Closure`, which is the return value of the script, and thus of the main script’s `load` step.
 
 The helper script can alternately define functions and return `this`, in which case the result of the `load` step can be used to invoke those functions like object methods.
-An older version of the [Docker demo](demo/README.md) showed this technique in practice:
+An older version of the [Docker demo](https://github.com/jenkinsci/workflow-aggregator-plugin/blob/master/demo/README.md) showed this technique in practice:
 
 ```groovy
 def pipeline
-node('slave') {
+node('agent') {
     git '…'
     pipeline = load 'pipeline.groovy'
     pipeline.devQAStaging()
@@ -729,11 +745,6 @@ return this;
 In this case `devQAStaging` runs on the same node as the main source code checkout, while `production` runs outside of that block (and in fact allocates a different node).
 
 To reduce the amount of boilerplate needed in the master script, you can try the [Workflow Remote File Loader plugin](https://github.com/jenkinsci/workflow-remote-loader-plugin/blob/master/README.md#workflow-remote-file-loader-plugin).
-
-## Retaining Global Libraries
-
-Plugins inject function and class names into a Pipeline before it runs. The plugin bundled with Pipeline allows you to eliminate the above boilerplate and keep the whole script (except one “bootstrap” line) in a Git server hosted by Jenkins.
-A [separate document](cps-global-lib/README.md) has details on this system.
 
 ## Creating Multibranch Projects
 

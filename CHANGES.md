@@ -2,6 +2,13 @@
 
 Only noting significant user changes, not internal code cleanups and minor bug fixes.
 
+## 2.1
+
+## 2.x
+
+After the 1.15 release, Pipeline component plugins were moved into individual repositories, with changelogs in the corresponding wiki pages.
+For example, the [Pipeline Groovy plugin wiki](https://wiki.jenkins-ci.org/display/JENKINS/Pipeline+Groovy+Plugin) lists its changelog starting with 2.0.
+
 ## 1.15 (Mar 10 2016)
 
 * Now based on Jenkins core 1.642.x. `BuildDiscarderProperty` may now be referenced from the `properties` step without a disambiguating package name.
@@ -11,6 +18,14 @@ Only noting significant user changes, not internal code cleanups and minor bug f
 
 * [JENKINS-32925](https://issues.jenkins-ci.org/browse/JENKINS-32925): stack overflow displaying reference documentation in certain cases.
 * [JENKINS-27152](https://issues.jenkins-ci.org/browse/JENKINS-27152): offering `tmp` option to `pwd` step.
+
+## 1.14.2 (Jun 01 2016)
+
+* [JENKINS-35247](https://issues.jenkins-ci.org/browse/JENKINS-35247): `git` and `subversion` plugin dependencies made dynamic, in preparation for `git` and `svn` steps being moved to the respective plugins.
+
+## 1.14.1 (May 24 2016)
+
+* [JENKINS-34450](https://issues.jenkins-ci.org/browse/JENKINS-34450): work around core deadlock (backport from `workflow-job` 2.2).
 
 ## 1.14 (Feb 25 2016)
 
@@ -159,6 +174,10 @@ Note: if you also have _CloudBees Workflow: Groovy Checkpoint_ installed, you _m
 * Avoid some possible name clashes with function names in scripts (`build` reported).
 * API addition: block-scoped steps can now pass in `EnvironmentExpander` and/or `ConsoleLogFilter` to better customize processing of nested code.
 
+## 1.4.3 (Jun 01 2016)
+
+* [JENKINS-35247](https://issues.jenkins-ci.org/browse/JENKINS-35247): `git` and `subversion` plugin dependencies made dynamic, in preparation for `git` and `svn` steps being moved to the respective plugins.
+
 ## 1.4.2 (Jul 21 2015)
 
 * JENKINS-28131 backport from 1.9.
@@ -197,7 +216,7 @@ Note: if you also have _CloudBees Workflow: Groovy Checkpoint_ installed, you _m
 * `catchError` was incorrectly setting build status to failed when it was merely aborted, canceled, etc.
 * [JENKINS-26123](https://issues.jenkins-ci.org/browse/JENKINS-26123): added `wait` option to `build`.
 * Check for failure to even trigger a build from `build`.
-* [PR 52](https://github.com/jenkinsci/workflow-plugin/pull/52): fixed some memory leaks causing the permanent generation and heap to grow unbounded after many flow builds.
+* [PR 52](https://github.com/jenkinsci/pipeline-plugin/pull/52): fixed some memory leaks causing the permanent generation and heap to grow unbounded after many flow builds.
 * [JENKINS-26120](https://issues.jenkins-ci.org/browse/JENKINS-26120): added `sleep` step.
 
 ## 1.2 (Jan 24 2015)
@@ -223,4 +242,4 @@ Note: if you also have _CloudBees Workflow: Groovy Checkpoint_ installed, you _m
 
 ## 1.0 (Nov 25 2014)
 
-See [archives](https://github.com/jenkinsci/workflow-plugin/blob/cdca218ca11e127d97543a2e209803708c5af9d8/CHANGES.md) for changes in pre-1.0 betas.
+See [archives](https://github.com/jenkinsci/pipeline-plugin/blob/cdca218ca11e127d97543a2e209803708c5af9d8/CHANGES.md) for changes in pre-1.0 betas.
