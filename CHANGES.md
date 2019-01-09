@@ -2,6 +2,8 @@
 
 Only noting significant user changes, not internal code cleanups and minor bug fixes.
 
+## 2.1
+
 ## 2.x
 
 After the 1.15 release, Pipeline component plugins were moved into individual repositories, with changelogs in the corresponding wiki pages.
